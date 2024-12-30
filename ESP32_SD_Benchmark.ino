@@ -1,39 +1,18 @@
-/*******************
- * For ESP32 only, connect the SD card to the following pins:
- * SD Card | ESP32
- *    D2       12
- *    D3       13
- *    CMD      15
- *    VSS      GND
- *    VDD      3.3V
- *    CLK      14
- *    VSS      GND
- *    D0       2  (add 1K pull up after flashing)
- *    D1       4
- * 
- * For ESP32-S3 the pins are configurable
-*/
+/* Uncomment one and only one below Dev Device pins header */
+#include <PINS_T-DECK.h>
+
+#ifndef DEV_DEVICE_PINS
+#error "Please include one of the Dev Device pins header"
+#endif
+
+#ifndef SD_SUPPORTED
+#error "No SD pins defined in this Dev Device"
+#endif
+
 #include <stdio.h>
 #include <FS.h>
 #include <SD.h>
 #include <SD_MMC.h>
-
-// esp32s3usbotg
-#if defined(ESP32) && (CONFIG_IDF_TARGET_ESP32)
-#define SDMMC_D2 12  // SDMMC Data2
-#define SDMMC_D3 13  // SDMMC Data3 / SPI CS
-#define SDMMC_CMD 15 // SDMMC CMD   / SPI MOSI
-#define SDMMC_CLK 14 // SDMMC CLK   / SPI SCK
-#define SDMMC_D0 2   // SDMMC Data0 / SPI MISO
-#define SDMMC_D1 4   // SDMMC Data1
-#elif defined(ESP32) && (CONFIG_IDF_TARGET_ESP32S3)
-#define SDMMC_D2 33  // SDMMC Data2
-#define SDMMC_D3 34  // SDMMC Data3 / SPI CS
-#define SDMMC_CMD 35 // SDMMC CMD   / SPI MOSI
-#define SDMMC_CLK 36 // SDMMC CLK   / SPI SCK
-#define SDMMC_D0 37  // SDMMC Data0 / SPI MISO
-#define SDMMC_D1 38  // SDMMC Data1
-#endif
 
 #define TEST_FILE_SIZE (4 * 1024 * 1024)
 
@@ -149,8 +128,8 @@ void testIO(fs::FS &fs)
   testWriteFile(fs, "/test_4k.bin", buf, 4 * 1024);
   testWriteFile(fs, "/test_8k.bin", buf, 8 * 1024);
   testWriteFile(fs, "/test_16k.bin", buf, 16 * 1024);
-  testWriteFile(fs, "/test_32k.bin", buf, 32 * 1024);
-  testWriteFile(fs, "/test_64k.bin", buf, 64 * 1024);
+  //  testWriteFile(fs, "/test_32k.bin", buf, 32 * 1024);
+  //  testWriteFile(fs, "/test_64k.bin", buf, 64 * 1024);
 
   delay(10000);
 
@@ -159,8 +138,8 @@ void testIO(fs::FS &fs)
   testReadFile(fs, "/test_4k.bin", buf, 4 * 1024);
   testReadFile(fs, "/test_8k.bin", buf, 8 * 1024);
   testReadFile(fs, "/test_16k.bin", buf, 16 * 1024);
-  testReadFile(fs, "/test_32k.bin", buf, 32 * 1024);
-  testReadFile(fs, "/test_64k.bin", buf, 64 * 1024);
+  //  testReadFile(fs, "/test_32k.bin", buf, 32 * 1024);
+  //  testReadFile(fs, "/test_64k.bin", buf, 64 * 1024);
 }
 
 void testRawIO()
@@ -173,8 +152,8 @@ void testRawIO()
   testRawWriteFile("/root/test_4k.bin", buf, 4 * 1024);
   testRawWriteFile("/root/test_8k.bin", buf, 8 * 1024);
   testRawWriteFile("/root/test_16k.bin", buf, 16 * 1024);
-  testRawWriteFile("/root/test_32k.bin", buf, 32 * 1024);
-  testRawWriteFile("/root/test_64k.bin", buf, 64 * 1024);
+  //  testRawWriteFile("/root/test_32k.bin", buf, 32 * 1024);
+  //  testRawWriteFile("/root/test_64k.bin", buf, 64 * 1024);
 
   delay(10000);
 
@@ -183,65 +162,55 @@ void testRawIO()
   testRawReadFile("/root/test_4k.bin", buf, 4 * 1024);
   testRawReadFile("/root/test_8k.bin", buf, 8 * 1024);
   testRawReadFile("/root/test_16k.bin", buf, 16 * 1024);
-  testRawReadFile("/root/test_32k.bin", buf, 32 * 1024);
-  testRawReadFile("/root/test_64k.bin", buf, 64 * 1024);
+  //  testRawReadFile("/root/test_32k.bin", buf, 32 * 1024);
+  //  testRawReadFile("/root/test_64k.bin", buf, 64 * 1024);
 }
 
 void setup()
 {
-  // put your setup code here, to run once:
+#ifdef DEV_DEVICE_INIT
+  DEV_DEVICE_INIT();
+#endif
+
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
-  // while (!Serial);
+  // while(!Serial);
+  Serial.println("ESP32 SD Benchmark");
 
+#if defined(SPI_SHARED)
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  if (!SD.begin(SD_CS, SPI, 80000000, "/root"))
+  {
+    Serial.println("Card Mount Failed");
+    return;
+  }
+  testIO(SD);
+  testRawIO();
+#elif defined(SD_D1)
   /* test SD_MMC 4-bit Mode */
 #if defined(SOC_SDMMC_USE_GPIO_MATRIX)
-  SD_MMC.setPins(SDMMC_CLK, SDMMC_CMD, SDMMC_D0, SDMMC_D1, SDMMC_D2, SDMMC_D3);
+  SD_MMC.setPins(SD_SCK, SD_MOSI, SD_MISO, SD_D1, SD_D2, SD_CS);
 #endif
-  if (!SD_MMC.begin("/root"))
+  if (!SD_MMC.begin("/root", false /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_DEFAULT))
   {
     Serial.println("Card Mount Failed");
     return;
   }
   testIO(SD_MMC);
   testRawIO();
-
+#else
   /* test SD_MMC 1-bit Mode */
-  // pinMode(SDMMC_D3 /* CS */, OUTPUT);
-  // digitalWrite(SDMMC_D3 /* CS */, HIGH);
-  // #if defined(SOC_SDMMC_USE_GPIO_MATRIX)
-  // SD_MMC.setPins(SDMMC_CLK, SDMMC_CMD, SDMMC_D0);
-  // #endif
-  // if (!SD_MMC.begin("/root", true))
-  // {
-  //   Serial.println("Card Mount Failed");
-  //   return;
-  // }
-  // testIO(SD_MMC);
-  // testRawIO();
-
-  /* test SD SPI Mode at HSPI */
-  // SPIClass spi = SPIClass(HSPI);
-  // spi.begin(SDMMC_CLK, SDMMC_D0 /* MISO */, SDMMC_CMD /* MOSI */, SDMMC_D3 /* SS */);
-  // if (!SD.begin(SDMMC_D3 /* SS */, spi, 80000000, "/root"))
-  // {
-  //   Serial.println("Card Mount Failed");
-  //   return;
-  // }
-  // testIO(SD);
-  // testRawIO();
-
-  /* test SD SPI Mode at VSPI */
-  // #define SD_CS 4
-  // SPIClass spi = SPIClass(VSPI);
-  // spi.begin(18 /* SCK */, 19 /* MISO */, 23 /* MOSI */, SD_CS /* SS */);
-  // if (!SD.begin(SD_CS /* SS */, spi, 80000000, "/root"))
-  // {
-  //   Serial.printf("Card Mount Failed, SD_CS: %d\n", SD_CS);
-  //   return;
-  // }
-  // testIO(SD);
-  // testRawIO();
+#if defined(SOC_SDMMC_USE_GPIO_MATRIX)
+  SD_MMC.setPins(SD_SCK, SD_MOSI, SD_MISO);
+#endif
+  if (!SD_MMC.begin("/root", true /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_DEFAULT))
+  {
+    Serial.println("Card Mount Failed");
+    return;
+  }
+  testIO(SD_MMC);
+  testRawIO();
+#endif
 }
 
 void loop()
