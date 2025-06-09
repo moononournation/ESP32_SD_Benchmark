@@ -1,5 +1,9 @@
 /* Uncomment one and only one below Dev Device pins header */
-#include <PINS_T-DECK.h>
+#include <PINS_ESP32-S3-CAM.h>
+// #include <PINS_T-DECK.h>
+// #include <PINS_JC1060P470.h>
+// #include <PINS_ESP32-S3-Touch-LCD-2_8.h>
+// #include <PINS_JC8012P4A1.h>
 
 #ifndef DEV_DEVICE_PINS
 #error "Please include one of the Dev Device pins header"
@@ -13,6 +17,8 @@
 #include <FS.h>
 #include <SD.h>
 #include <SD_MMC.h>
+#include <FFat.h>
+#include <LittleFS.h>
 
 #define TEST_FILE_SIZE (4 * 1024 * 1024)
 
@@ -126,20 +132,20 @@ void testIO(fs::FS &fs)
   testWriteFile(fs, "/test_1k.bin", buf, 1024);
   testWriteFile(fs, "/test_2k.bin", buf, 2 * 1024);
   testWriteFile(fs, "/test_4k.bin", buf, 4 * 1024);
-  testWriteFile(fs, "/test_8k.bin", buf, 8 * 1024);
-  testWriteFile(fs, "/test_16k.bin", buf, 16 * 1024);
-  //  testWriteFile(fs, "/test_32k.bin", buf, 32 * 1024);
-  //  testWriteFile(fs, "/test_64k.bin", buf, 64 * 1024);
+  // testWriteFile(fs, "/test_8k.bin", buf, 8 * 1024);
+  // testWriteFile(fs, "/test_16k.bin", buf, 16 * 1024);
+  // testWriteFile(fs, "/test_32k.bin", buf, 32 * 1024);
+  // testWriteFile(fs, "/test_64k.bin", buf, 64 * 1024);
 
   delay(10000);
 
   testReadFile(fs, "/test_1k.bin", buf, 1024);
   testReadFile(fs, "/test_2k.bin", buf, 2 * 1024);
   testReadFile(fs, "/test_4k.bin", buf, 4 * 1024);
-  testReadFile(fs, "/test_8k.bin", buf, 8 * 1024);
-  testReadFile(fs, "/test_16k.bin", buf, 16 * 1024);
-  //  testReadFile(fs, "/test_32k.bin", buf, 32 * 1024);
-  //  testReadFile(fs, "/test_64k.bin", buf, 64 * 1024);
+  // testReadFile(fs, "/test_8k.bin", buf, 8 * 1024);
+  // testReadFile(fs, "/test_16k.bin", buf, 16 * 1024);
+  // testReadFile(fs, "/test_32k.bin", buf, 32 * 1024);
+  // testReadFile(fs, "/test_64k.bin", buf, 64 * 1024);
 }
 
 void testRawIO()
@@ -150,20 +156,20 @@ void testRawIO()
   testRawWriteFile("/root/test_1k.bin", buf, 1024);
   testRawWriteFile("/root/test_2k.bin", buf, 2 * 1024);
   testRawWriteFile("/root/test_4k.bin", buf, 4 * 1024);
-  testRawWriteFile("/root/test_8k.bin", buf, 8 * 1024);
-  testRawWriteFile("/root/test_16k.bin", buf, 16 * 1024);
-  //  testRawWriteFile("/root/test_32k.bin", buf, 32 * 1024);
-  //  testRawWriteFile("/root/test_64k.bin", buf, 64 * 1024);
+  // testRawWriteFile("/root/test_8k.bin", buf, 8 * 1024);
+  // testRawWriteFile("/root/test_16k.bin", buf, 16 * 1024);
+  // testRawWriteFile("/root/test_32k.bin", buf, 32 * 1024);
+  // testRawWriteFile("/root/test_64k.bin", buf, 64 * 1024);
 
   delay(10000);
 
   testRawReadFile("/root/test_1k.bin", buf, 1024);
   testRawReadFile("/root/test_2k.bin", buf, 2 * 1024);
   testRawReadFile("/root/test_4k.bin", buf, 4 * 1024);
-  testRawReadFile("/root/test_8k.bin", buf, 8 * 1024);
-  testRawReadFile("/root/test_16k.bin", buf, 16 * 1024);
-  //  testRawReadFile("/root/test_32k.bin", buf, 32 * 1024);
-  //  testRawReadFile("/root/test_64k.bin", buf, 64 * 1024);
+  // testRawReadFile("/root/test_8k.bin", buf, 8 * 1024);
+  // testRawReadFile("/root/test_16k.bin", buf, 16 * 1024);
+  // testRawReadFile("/root/test_32k.bin", buf, 32 * 1024);
+  // testRawReadFile("/root/test_64k.bin", buf, 64 * 1024);
 }
 
 void setup()
@@ -175,9 +181,11 @@ void setup()
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
   // while(!Serial);
+  delay(1000);
   Serial.println("ESP32 SD Benchmark");
 
 #if defined(SPI_SHARED)
+  Serial.println("test SD SPI Mode");
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   if (!SD.begin(SD_CS, SPI, 80000000, "/root"))
   {
@@ -187,11 +195,11 @@ void setup()
   testIO(SD);
   testRawIO();
 #elif defined(SD_D1)
-  /* test SD_MMC 4-bit Mode */
+  Serial.println("test SD_MMC 4-bit Mode");
 #if defined(SOC_SDMMC_USE_GPIO_MATRIX)
   SD_MMC.setPins(SD_SCK, SD_MOSI, SD_MISO, SD_D1, SD_D2, SD_CS);
 #endif
-  if (!SD_MMC.begin("/root", false /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_DEFAULT))
+  if (!SD_MMC.begin("/root", false /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_HIGHSPEED))
   {
     Serial.println("Card Mount Failed");
     return;
@@ -199,7 +207,7 @@ void setup()
   testIO(SD_MMC);
   testRawIO();
 #else
-  /* test SD_MMC 1-bit Mode */
+  Serial.println("test SD_MMC 1-bit Mode");
 #if defined(SOC_SDMMC_USE_GPIO_MATRIX)
   SD_MMC.setPins(SD_SCK, SD_MOSI, SD_MISO);
 #endif
@@ -210,6 +218,30 @@ void setup()
   }
   testIO(SD_MMC);
   testRawIO();
+#else
+  if (!LittleFS.begin(true, "/root"))
+  {
+    Serial.println("LittleFS Mount Failed");
+    return;
+  }
+  else
+  {
+    Serial.println("test LittleFS");
+    testIO(LittleFS);
+    testRawIO();
+  }
+
+  if (!FFat.begin(true, "/root"))
+  {
+    Serial.println("FFat Mount Failed");
+    return;
+  }
+  else
+  {
+    Serial.println("test FFat");
+    testIO(FFat);
+    testRawIO();
+  }
 #endif
 }
 
